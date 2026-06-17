@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f0f0f;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #f0f0f0;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    h1 span { color: #6c63ff; }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    textarea {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 10px;
+      color: #f0f0f0;
+      font-size: 1rem;
+      padding: 0.8rem 1rem;
+      resize: vertical;
+      min-height: 90px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+
+    textarea:focus { border-color: #6c63ff; }
+
+    .options {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .option-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    select, input[type="color"] {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 10px;
+      color: #f0f0f0;
+      font-size: 0.95rem;
+      padding: 0.6rem 0.8rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    select:focus { border-color: #6c63ff; }
+
+    input[type="color"] {
+      padding: 0.3rem 0.5rem;
+      height: 42px;
+      width: 100%;
+    }
+
+    button {
+      background: #6c63ff;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.85rem;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover { background: #5a52d5; }
+    button:active { transform: scale(0.98); }
+
+    #output {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    #qr-container {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem;
+      display: none;
+    }
+
+    #qr-container canvas { display: block; }
+
+    #download-btn {
+      background: #222;
+      border: 1px solid #333;
+      font-weight: 500;
+      display: none;
+    }
+
+    #download-btn:hover { background: #2a2a2a; border-color: #6c63ff; }
+
+    .error {
+      color: #ff6b6b;
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>QR <span>Generator</span></h1>
+
+    <div class="input-group">
+      <label>Text oder URL</label>
+      <textarea id="text-input" placeholder="https://example.com oder beliebiger Text…"></textarea>
+    </div>
+
+    <div class="options">
+      <div class="option-group">
+        <label>Größe</label>
+        <select id="size">
+          <option value="128">Klein (128px)</option>
+          <option value="200" selected>Mittel (200px)</option>
+          <option value="300">Groß (300px)</option>
+          <option value="400">XL (400px)</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label>Farbe</label>
+        <input type="color" id="color" value="#000000" />
+      </div>
+    </div>
+
+    <button id="generate-btn">QR Code generieren</button>
+
+    <div id="output">
+      <p class="error" id="error-msg">Bitte Text oder URL eingeben.</p>
+      <div id="qr-container"></div>
+      <button id="download-btn">PNG herunterladen</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    const input = document.getElementById('text-input');
+    const sizeSelect = document.getElementById('size');
+    const colorPicker = document.getElementById('color');
+    const generateBtn = document.getElementById('generate-btn');
+    const container = document.getElementById('qr-container');
+    const downloadBtn = document.getElementById('download-btn');
+    const errorMsg = document.getElementById('error-msg');
+
+    let qr = null;
+
+    function generate() {
+      const text = input.value.trim();
+      errorMsg.style.display = 'none';
+
+      if (!text) {
+        errorMsg.style.display = 'block';
+        container.style.display = 'none';
+        downloadBtn.style.display = 'none';
+        return;
+      }
+
+      const size = parseInt(sizeSelect.value);
+      const color = colorPicker.value;
+
+      container.innerHTML = '';
+      container.style.display = 'block';
+      downloadBtn.style.display = 'block';
+
+      qr = new QRCode(container, {
+        text,
+        width: size,
+        height: size,
+        colorDark: color,
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+    }
+
+    generateBtn.addEventListener('click', generate);
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        generate();
+      }
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const canvas = container.querySelector('canvas');
+      if (!canvas) return;
+      const link = document.createElement('a');
+      link.download = 'qrcode.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  </script>
+</body>
+</html>
